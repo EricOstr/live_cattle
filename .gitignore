@@ -48,4 +48,4 @@ dist/**
 package.nls.*.json
 l10n/o
 *.env
-*.csv
+csv/
