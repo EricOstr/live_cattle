@@ -51,4 +51,5 @@ l10n/o
 csv/
 
 *.txt
+*.pdf
 !requirements.txt
