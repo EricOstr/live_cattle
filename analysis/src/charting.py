@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from .data_wrangling import cubicspline
+import statsmodels.api as sm
 
 sns.set_style('darkgrid')
 plt.rcParams['figure.figsize'] = (16, 8)
@@ -27,12 +28,15 @@ def lineplot_2_own_axis(series1, series2, label1="", label2="", title=""):
 
 
 
-def scatterplot(*args, resample='M', method='last', label_point=False, reg=False):
+
+
+def scatterplot(*args, resample='Y', method='last', label_point=False, reg=False, title='', constant=True):
 
     series = []
     labels = []
 
     for arg in args:
+        
         if isinstance(arg, pd.Series):
             series.append(arg)
         elif isinstance(arg, str):
@@ -42,30 +46,50 @@ def scatterplot(*args, resample='M', method='last', label_point=False, reg=False
         [
             getattr(series[0].resample(resample), method)(),
             getattr(series[1].resample(resample), method)()
-            ], axis=1).dropna()
+        ], axis=1).dropna()
 
-    ax = sns.scatterplot(x=df.iloc[:,0], y=df.iloc[:,1], alpha=0.5, hue=df.index, legend=False)
+    df.columns = [0, 1]
+    df.dropna()
+
+    ax = sns.scatterplot(x=df.iloc[:,1], y=df.iloc[:,0], alpha=0.5, hue=df.index, legend=False)
 
     if label_point:
         for i, label in enumerate(df.index):
             ax.text(df.iloc[i,0], df.iloc[i,1], label.date(), ha='center', va='center')
 
     if reg:
-        # Add regression line with slope and intercept
-        slope, intercept, r_value, p_value, std_err = stats.linregress(df.iloc[:,0], df.iloc[:,1])
-        r2_value = r_value ** 2
-        sns.regplot(x=df.iloc[:,0], y=df.iloc[:,1], scatter=False, color='red', ci=None, line_kws={'label':"y={0:.3f}x+{1:.3f}".format(slope,intercept)})
-        plt.text(0.05, 0.95, "Slope estimate: {0:.3f}\nIntercept estimate: {1:.3f}\nP-value: {2:.3f}\nR2-value: {3:.3f}".format(slope, intercept, p_value, r2_value), transform=ax.transAxes, fontsize=12, verticalalignment='top')
+
+        if constant:
+            model = sm.OLS(df.iloc[:,0], sm.add_constant(df.iloc[:,1])).fit()
+            fitted_values = model.predict(sm.add_constant(df.iloc[:,1]))
+        else:
+            model = sm.OLS(df.iloc[:,0], df.iloc[:,1]).fit()
+            fitted_values = model.predict(df.iloc[:,1])
+
+        
+        plt.plot(df.iloc[:,1], fitted_values, color='red')
+
+        plt.text(
+            0.05,
+            0.85,
+            f"{'Intercept estimate: ' + str(round(model.params['const'], 3)) if constant else ''}" + \
+            f"'\nSlope estimate: {round(model.params[1], 3)}\n" + \
+            f"P-value: {round(model.pvalues[1], 3)}\n" + \
+            f"R2-value: {round(model.rsquared, 3)}\n",
+            transform=ax.transAxes
+        )
         plt.legend()
 
     if len(labels) == 2:
-        plt.xlabel(labels[0])
-        plt.ylabel(labels[1])
+        plt.ylabel(labels[0])
+        plt.xlabel(labels[1])
+        
 
+    plt.title(title)
     plt.show()
 
 
-def lineplot_mult_same_axis(*args, **kwargs):
+def lineplot_mult_same_axis(*args, title=""):
 
     series = []
     labels = []
@@ -80,6 +104,7 @@ def lineplot_mult_same_axis(*args, **kwargs):
         label = labels[i] if i < len(labels) else f'series{i}'
         sns.lineplot(data=series, label=label, alpha=0.5)
 
+    plt.title(title)
     plt.legend()
     plt.show()
 
@@ -141,14 +166,14 @@ def seasonal_annual_normalized(series, cubic_spline=True, legend=False, title=""
     lineplot_mult_normalized(*series, *labels, legend=legend, title=title)
 
 
-def linear_regression_by_lag(dep_var_series, indep_var_series, max_lag=5):
+def linear_regression_by_lag(y, x, max_lag=5):
 
     df = pd.DataFrame()
 
-    df['dep_var'] = dep_var_series
+    df['y'] = y
 
     for lag in range(0, max_lag+1):
-        df[f'indep_var_lag_{lag}'] = indep_var_series.shift(-lag)
+        df[f'x_lag_{lag}'] = x.shift(-lag)
 
     df = df.dropna()
 
@@ -156,9 +181,43 @@ def linear_regression_by_lag(dep_var_series, indep_var_series, max_lag=5):
     for lag in range(max_lag+1):
 
         slope, intercept, r_value, p_value, std_err = stats.linregress(
-            df.loc[:,'dep_var'],
-            df.loc[:,f'indep_var_lag_{lag}']
+            df.loc[:,'y'],
+            df.loc[:,f'x_lag_{lag}']
         )
 
         print(f"Lag {lag}:\t\tSlope = {slope:.4f}\t\tP-value = {p_value:.4f}")
+
+
+
+def plot_fitted_actual(actual, fitted):
+        
+    import plotly.graph_objs as go
+    from plotly.subplots import make_subplots
+    import numpy as np
+
+    # create a subplot with two traces
+    fig = make_subplots(rows=1, cols=1)
+
+    fig.add_trace(go.Scatter(x=fitted.index, y=actual[fitted.index], mode='markers', name='Actual', marker=dict(color='blue')),
+                row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=fitted.index, y=fitted, mode='markers', name='Fitted', marker=dict(color='red')),
+                row=1, col=1)
+
+    # add lines connecting predicted to actual values
+    for i in range(len(fitted)):
+        fig.add_shape(type='line',
+                    x0=fitted.index[i], y0=fitted[i],
+                    x1=fitted.index[i], y1=actual[fitted.index[i]],
+                    line=dict(color='red', width=1))
+
+    # update layout
+    fig.update_layout(title='Fitted vs. Actual Values',
+                    xaxis_title='Date',
+                    yaxis_title='Cattle cash price % change')
+
+
+    print('Mean Absolute Error:', round(np.mean(abs(actual[fitted.index] - fitted)), 2))
+    # show plot
+    fig.show()
 

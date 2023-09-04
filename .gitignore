@@ -49,3 +49,6 @@ package.nls.*.json
 l10n/o
 *.env
 csv/
+
+*.txt
+!requirements.txt

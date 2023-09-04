@@ -118,6 +118,8 @@ def adjust_series_cpi(series):
     cpi_series = cubicspline(get_cpi_series(historical=True))
     
     cpi_series = cpi_series[cpi_series.index >= series.index[0]]
+    series = series[series.index >= cpi_series.index[0]]
+
     cpi_series_rebased = cpi_series / cpi_series[0]
 
     return (series / cpi_series_rebased).dropna()
@@ -196,7 +198,6 @@ def get_cpi_series(historical=False):
 
     return cpi_series
 
-    
 
 def get_us_gdp_qrt_historical_series():
     '''
@@ -214,13 +215,95 @@ def get_us_gdp_qrt_historical_series():
     df['Date'] = pd.to_datetime(df['Date'])
     df.set_index('Date', inplace=True)
     df.sort_index(inplace=True)
-    df.index = df.index.date
+    df.index = pd.to_datetime(df.index.date)
 
     # Convert the string numbers to actual numeric type
     df['GDP'] = pd.to_numeric(df['Value Value'].str.replace(' trillion', '')) * (10**12)
     df.drop(['Value Value'], axis=1, inplace=True)
 
     return df.GDP
+
+
+
+
+def get_sp500_historical_series():
+
+    '''
+    Monthly SP500
+    https://www.multpl.com/s-p-500-historical-prices/table/by-month
+    '''
+    url = 'https://www.multpl.com/s-p-500-historical-prices/table/by-month'
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    table = soup.find('table')
+    df = pd.read_html(str(table))[0]
+
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+    df.sort_index(inplace=True)
+    df.index = pd.to_datetime(df.index.date)
+
+    df['SP500'] = df['Price Value']
+    df.drop(['Price Value'], axis=1, inplace=True)
+
+    return df.SP500
+
+
+
+
+def get_us_gdp_qrt_historical_series():
+    '''
+    Quarterly US Nominal GDP
+    source: https://www.multpl.com/us-gdp/table/by-quarter 
+    '''
+    url = 'https://www.multpl.com/us-gdp/table/by-quarter'
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    table = soup.find('table')
+    df = pd.read_html(str(table))[0]
+
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+    df.sort_index(inplace=True)
+    df.index = pd.to_datetime(df.index.date)
+
+    # Convert the string numbers to actual numeric type
+    df['GDP'] = pd.to_numeric(df['Value Value'].str.replace(' trillion', '')) * (10**12)
+    df.drop(['Value Value'], axis=1, inplace=True)
+
+    return df.GDP
+
+
+def get_sp500_historical_series():
+
+    '''
+    Monthly SP500
+    https://www.multpl.com/s-p-500-historical-prices/table/by-month
+    '''
+    url = 'https://www.multpl.com/s-p-500-historical-prices/table/by-month'
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    table = soup.find('table')
+    df = pd.read_html(str(table))[0]
+
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+    df.sort_index(inplace=True)
+    df.index = pd.to_datetime(df.index.date)
+
+    df['SP500'] = df['Price Value']
+    df.drop(['Price Value'], axis=1, inplace=True)
+
+    return df.SP500
+
+
+
 
 
 def get_us_gdp_qrt_series():
@@ -271,4 +354,70 @@ def usda_clean_monthly(df, only_value=True, historical=False):
         df = df[df.index >= Config.analysis_start_date]        
 
     return df.Value if only_value else df
+
+
+
+
+def get_us_population_historical_series():
+    '''
+    US 
+    '''
+    url = 'https://www.multpl.com/united-states-population/table/by-month'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    table = soup.find('table')
+    df = pd.read_html(str(table))[0]
+
+
+    df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
+
+    df.set_index('Date', inplace=True)
+    df.sort_index(inplace=True)
+    # df.index = df.index.date
+
+
+    df['Value'] = df['Value Value'].str.replace('[^\d.]', '', regex=True).astype(float)*1e6
+
+    return df['Value']
+
+
+def clean_fas_data(data):
+
+    data = data.drop(columns=['UOM'])
+    data = data.melt(id_vars=['Year'], var_name='Month', value_name='Value')
+
+    def get_date(row):
+        year = row.Year.split('-')[0]
+        month_number = pd.to_datetime(row.Month, format="%B").month
+        return pd.to_datetime(f"{year}-{month_number}-1")
+
+    def get_pounds(row):
+        # Convert from metric tons string value to pounds (lb) float value
+        return float(row.Value.replace(',', ''))
+
+    data['Date'] = data.apply(get_date, axis=1)
+
+    data = data[['Date','Value']]
+    data = data.dropna()
+    data.set_index('Date', inplace=True)
+    data.sort_index(inplace=True)
+    # data.index = data.index.date
+
+    data.Value = data.apply(get_pounds, axis=1)
+
+    return data.Value
+
+
+
+def pop_row(dataframe, index_to_split):
+    # Get the row to split
+    row_to_split = dataframe.iloc[index_to_split:index_to_split + 1]
+
+    # Create a DataFrame without the specified row
+    dataframe_without_row = dataframe.drop(row_to_split.index)
+
+    return row_to_split, dataframe_without_row
+
+
 
