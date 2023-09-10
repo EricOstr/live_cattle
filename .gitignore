@@ -53,3 +53,5 @@ csv/
 *.txt
 *.pdf
 !requirements.txt
+**/venv
+**/lib
