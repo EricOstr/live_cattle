@@ -221,3 +221,25 @@ def plot_fitted_actual(actual, fitted):
     # show plot
     fig.show()
 
+
+
+def plot_coefficients_pvalues(model):
+
+
+    # extract parameter estimates and p-values from the summary table
+    params = model.params
+    pvalues = model.pvalues
+
+    # plot the parameter estimates
+    fig, (ax1, ax2) = plt.subplots(nrows=2, gridspec_kw={'height_ratios': [2, 1]})
+    params.plot(kind='bar', ax=ax1)
+    ax1.set_ylabel('Parameter Estimate')
+    ax1.set_xticklabels([])  # remove x ticks
+
+    # plot the p-values
+    pvalues.plot(kind='bar', ax=ax2, color='grey')
+    ax2.axhline(y=0.1, color='red', linestyle='--')
+    ax2.set_ylabel('p-value')
+    ax2.set_xlabel('Parameter')
+    plt.show()    
+

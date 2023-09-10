@@ -329,7 +329,7 @@ def combine_month_to_datetime(row):
         'NOV': '11',
         'DEC': '12'
     }
-    month = period_to_month.get(row['Period'], '01')
+    month = period_to_month[row['Period']]
 
     return pd.to_datetime(f"{row['Year']}-{month}-01", format="%Y-%m-%d")
 
@@ -343,7 +343,7 @@ def usda_clean_monthly(df, only_value=True, historical=False):
     else:
         df['Value'] = df['Value'].astype(float)
 
-
+    # 'Date' is the first date of the month, over which we observed 'Value
     df['Date'] = df.apply(combine_month_to_datetime, axis=1)
     df.drop(['Year', 'Period', 'Week Ending'], axis=1, inplace=True)
 
@@ -418,6 +418,5 @@ def pop_row(dataframe, index_to_split):
     dataframe_without_row = dataframe.drop(row_to_split.index)
 
     return row_to_split, dataframe_without_row
-
 
 
