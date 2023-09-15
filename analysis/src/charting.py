@@ -31,7 +31,9 @@ def lineplot_2_own_axis(series1, series2, label1="", label2="", title=""):
 
 
 def scatterplot(*args, resample='Y', method='last', label_point=False, reg=False, title='', constant=True):
-
+    '''
+    First argument is y, second is x
+    '''
     series = []
     labels = []
 
@@ -49,9 +51,9 @@ def scatterplot(*args, resample='Y', method='last', label_point=False, reg=False
         ], axis=1).dropna()
 
     df.columns = [0, 1]
-    df.dropna()
+    df = df.dropna()
 
-    ax = sns.scatterplot(x=df.iloc[:,1], y=df.iloc[:,0], alpha=0.5, hue=df.index, legend=False)
+    ax = sns.scatterplot( y=df.iloc[:,0], x=df.iloc[:,1], alpha=0.5, hue=df.index, legend=False)
 
     if label_point:
         for i, label in enumerate(df.index):
@@ -177,15 +179,11 @@ def linear_regression_by_lag(y, x, max_lag=5):
 
     df = df.dropna()
 
-
     for lag in range(max_lag+1):
-
-        slope, intercept, r_value, p_value, std_err = stats.linregress(
-            df.loc[:,'y'],
-            df.loc[:,f'x_lag_{lag}']
-        )
-
-        print(f"Lag {lag}:\t\tSlope = {slope:.4f}\t\tP-value = {p_value:.4f}")
+        X = df.loc[:, f'x_lag_{lag}']
+        X = sm.add_constant(X)  # Add a constant (intercept) to the model
+        model = sm.OLS(df['y'], X).fit()  # Fit the OLS model
+        print(f"Lag {lag}:\t\tSlope = {model.params[1]:.4f}\t\tP-value = {model.pvalues[1]:.4f}")
 
 
 
