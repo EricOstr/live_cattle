@@ -243,12 +243,11 @@ def plot_coefficients_pvalues(model):
 
 
 
-def plot_monthly_box_chart(series, title="", ylabel="", xlabel=""):
+def plot_monthly_box_chart_plotly(series, title="", ylabel="", xlabel=""):
 
     df_adj = pd.DataFrame({
         'series': series,
         'month' : series.index.month,
-        'quarter' : series.index.quarter,
     })
 
     import plotly.subplots as sp
@@ -262,3 +261,33 @@ def plot_monthly_box_chart(series, title="", ylabel="", xlabel=""):
                     yaxis_title=ylabel)
 
     fig.show()
+
+    import matplotlib.pyplot as plt
+
+
+def plot_monthly_box_chart_matplotlib(series, title="", ylabel="", xlabel=""):
+    
+    df_adj = pd.DataFrame({
+        'series': series,
+        'month': series.index.month,
+    })
+
+    plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
+
+    # Create a list of labels for each month
+    month_labels = df_adj['month'].unique()
+    month_labels.sort()
+
+    # Create a list to store data for each month
+    data_by_month = [df_adj[df_adj['month'] == month]['series'] for month in month_labels]
+
+    # Create a box plot for the series by month
+    plt.boxplot(data_by_month, labels=month_labels)
+
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
