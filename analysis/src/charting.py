@@ -241,3 +241,24 @@ def plot_coefficients_pvalues(model):
     ax2.set_xlabel('Parameter')
     plt.show()    
 
+
+
+def plot_monthly_box_chart(series, title="", ylabel="", xlabel=""):
+
+    df_adj = pd.DataFrame({
+        'series': series,
+        'month' : series.index.month,
+        'quarter' : series.index.quarter,
+    })
+
+    import plotly.subplots as sp
+
+    fig = sp.make_subplots(rows=1, cols=1)
+
+    fig.add_box(y=df_adj['series'], x=df_adj['month'], name='Price Received')
+
+    fig.update_layout(title=title,
+                    xaxis_title=xlabel,
+                    yaxis_title=ylabel)
+
+    fig.show()
